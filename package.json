@@ -1,0 +1,31 @@
+{
+  "name": "ai-project-archaeologist",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Enterprise repository intelligence platform with AI-assisted code archaeology.",
+  "workspaces": [
+    "Backend/api",
+    "Backend/worker",
+    "Frontend"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace Backend/api",
+    "dev:worker": "npm run dev --workspace Backend/worker",
+    "dev:frontend": "npm run dev --workspace Frontend",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.68.0",
+    "@typescript-eslint/parser": "^8.68.0",
+    "eslint": "^10.9.1",
+    "typescript": "^5.9.3"
+  }
+}
