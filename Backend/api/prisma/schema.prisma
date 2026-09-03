@@ -1,0 +1,273 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector")]
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum RepositoryProvider {
+  GITHUB
+}
+
+enum IndexJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum DocumentationType {
+  README
+  API
+  ARCHITECTURE
+  ONBOARDING
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model User {
+  id              String        @id @default(uuid())
+  email           String        @unique
+  name            String?
+  passwordHash    String
+  role            UserRole      @default(USER)
+  githubUserId    String?
+  githubUsername  String?
+  githubTokenHash String?
+  refreshTokens   RefreshToken[]
+  repositories    Repository[]
+  chats           Chat[]
+  settings        UserSettings?
+  auditLogs       AuditLog[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Repository {
+  id                String                @id @default(uuid())
+  ownerId           String
+  owner             User                  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  provider          RepositoryProvider    @default(GITHUB)
+  providerRepoId    String
+  ownerName         String
+  name              String
+  fullName          String
+  defaultBranch     String
+  description       String?
+  private           Boolean               @default(false)
+  cloneUrl          String
+  htmlUrl           String
+  language          String?
+  stars             Int                   @default(0)
+  forks             Int                   @default(0)
+  lastSyncedAt      DateTime?
+  files             RepositoryFile[]
+  commits           Commit[]
+  branches          Branch[]
+  chats             Chat[]
+  documentation     Documentation[]
+  architectureGraphs ArchitectureGraph[]
+  indexJobs         RepositoryIndexJob[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@unique([ownerId, provider, providerRepoId])
+  @@index([ownerId])
+  @@index([fullName])
+}
+
+model RepositoryFile {
+  id           String       @id @default(uuid())
+  repositoryId String
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  path         String
+  extension    String?
+  language     String?
+  sizeBytes    Int
+  hash         String
+  summary      String?
+  chunks       FileChunk[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([repositoryId, path])
+  @@index([repositoryId, language])
+}
+
+model FileChunk {
+  id        String       @id @default(uuid())
+  fileId    String
+  file      RepositoryFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  content   String
+  startLine Int
+  endLine   Int
+  tokenCount Int
+  embedding Embedding?
+  metadata  Json?
+  createdAt DateTime     @default(now())
+
+  @@index([fileId])
+}
+
+model Embedding {
+  id        String   @id @default(uuid())
+  chunkId   String   @unique
+  chunk     FileChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+  model     String
+  vector    Unsupported("vector(1536)")
+  createdAt DateTime @default(now())
+}
+
+model Commit {
+  id           String     @id @default(uuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  sha          String
+  message      String
+  authorName   String?
+  authorEmail  String?
+  committedAt  DateTime
+  summary      String?
+  createdAt    DateTime   @default(now())
+
+  @@unique([repositoryId, sha])
+  @@index([repositoryId, committedAt])
+}
+
+model Branch {
+  id           String     @id @default(uuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  name         String
+  sha          String
+  protected    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([repositoryId, name])
+}
+
+model Chat {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositoryId String?
+  repository   Repository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
+  title        String
+  messages     Message[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([repositoryId])
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  chatId    String
+  chat      Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      MessageRole
+  content   String
+  citations Json?
+  createdAt DateTime    @default(now())
+
+  @@index([chatId, createdAt])
+}
+
+model Documentation {
+  id           String            @id @default(uuid())
+  repositoryId String
+  repository   Repository        @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  type         DocumentationType
+  title        String
+  content      String
+  metadata     Json?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([repositoryId, type])
+}
+
+model ArchitectureGraph {
+  id           String     @id @default(uuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  name         String
+  nodes        Json
+  edges        Json
+  metadata     Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([repositoryId])
+}
+
+model RepositoryIndexJob {
+  id           String         @id @default(uuid())
+  repositoryId String
+  repository   Repository     @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  queueJobId   String?        @unique
+  status       IndexJobStatus @default(QUEUED)
+  progress     Int            @default(0)
+  currentStep  String?
+  errorMessage String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([repositoryId, status])
+}
+
+model UserSettings {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme          String   @default("system")
+  defaultModel   String?
+  preferences    Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+}
