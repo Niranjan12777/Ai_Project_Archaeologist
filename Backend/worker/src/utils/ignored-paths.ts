@@ -5,5 +5,10 @@ export const ignoredPathGlobs = [
   "**/build/**",
   "**/coverage/**",
   "**/.next/**",
-  "**/vendor/**"
+  "**/vendor/**",
+  "**/.cache/**",
+  "**/target/**",
+  "**/__pycache__/**",
+  "**/.venv/**",
+  "**/venv/**"
 ];
