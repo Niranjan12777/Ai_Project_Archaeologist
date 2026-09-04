@@ -23,12 +23,23 @@ export class SourceParser {
 
     const parsed: ParsedSourceFile[] = [];
     for (const filePath of files.slice(0, 2000)) {
+      const language = this.inferLanguage(filePath);
+
+      if (!language) {
+        continue;
+      }
+
       const stat = await fs.stat(filePath);
       if (stat.size > 512_000) {
         continue;
       }
 
       const content = await fs.readFile(filePath, "utf8").catch(() => "");
+      if (content.includes("\0")) {
+        console.warn(`Skipping binary file: ${filePath}`);
+        continue;
+      }
+
       if (!content.trim()) {
         continue;
       }
