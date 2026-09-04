@@ -19,6 +19,28 @@ export class RepositoryIndexProcessor {
 
   async process(job: Job<RepositoryIndexJobData>): Promise<void> {
     const { repositoryId, indexJobId } = job.data;
+
+    try {
+      await this.runIndexing(repositoryId, indexJobId);
+    } catch (error) {
+      console.error(`Repository indexing failed for ${repositoryId}:`, error);
+
+      await prisma.repositoryIndexJob.update({
+        where: { id: indexJobId },
+        data: {
+          status: "FAILED",
+          currentStep: "Indexing failed"
+        }
+      });
+
+      throw error;
+    }
+  }
+
+  private async runIndexing(
+    repositoryId: string,
+    indexJobId: string
+  ): Promise<void> {
     await this.updateJob(indexJobId, 5, "Loading repository metadata");
 
     const repository = await prisma.repository.findUniqueOrThrow({ where: { id: repositoryId } });
@@ -38,7 +60,34 @@ export class RepositoryIndexProcessor {
     await this.updateJob(indexJobId, 60, "Persisting files and chunks");
     await this.pruneRemovedFiles(repositoryId, files.map((file) => file.path));
 
+    const existingFiles = await prisma.repositoryFile.findMany({
+      where: { repositoryId },
+      select: {
+        id: true,
+        path: true,
+        hash: true
+      }
+    });
+
+    const existingFilesByPath = new Map(
+      existingFiles.map((file) => [file.path, file])
+    );
+
+    let changedFiles = 0;
+    let unchangedFiles = 0;
+
     for (const sourceFile of files) {
+      const contentHash = this.hash(sourceFile.content);
+
+      const existingFile = existingFilesByPath.get(sourceFile.path);
+
+      if (existingFile?.hash === contentHash) {
+        unchangedFiles++;
+        continue;
+      }
+
+      changedFiles++;
+
       const file = await prisma.repositoryFile.upsert({
         where: { repositoryId_path: { repositoryId, path: sourceFile.path } },
         update: {
@@ -57,23 +106,60 @@ export class RepositoryIndexProcessor {
         }
       });
 
-      await prisma.fileChunk.deleteMany({ where: { fileId: file.id } });
-      for (const chunk of this.chunker.chunk(sourceFile.content)) {
-        const savedChunk = await prisma.fileChunk.create({
-          data: { fileId: file.id, ...chunk }
+      const chunks = this.chunker.chunk(sourceFile.content);
+
+      const vectors = await this.embeddings.embedMany(
+        chunks.map((chunk) => chunk.content)
+      );
+
+      await prisma.$transaction(async (tx) => {
+        await tx.fileChunk.deleteMany({
+          where: { fileId: file.id }
         });
-        const vector = await this.embeddings.embed(chunk.content);
-        if (vector) {
-          const vectorLiteral = `[${vector.join(",")}]`;
-          await prisma.$executeRaw`
-            INSERT INTO "Embedding" ("id", "chunkId", "model", "vector", "createdAt")
-            VALUES (${crypto.randomUUID()}, ${savedChunk.id}, ${env.openaiEmbeddingModel}, ${vectorLiteral}::vector, NOW())
-          `;
+
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          const vector = vectors[i];
+
+          const savedChunk = await tx.fileChunk.create({
+            data: {
+              fileId: file.id,
+              ...chunk
+            }
+          });
+
+          if (vector) {
+            const vectorLiteral = `[${vector.join(",")}]`;
+
+            await tx.$executeRaw`
+              INSERT INTO "Embedding"
+                ("id", "chunkId", "model", "vector", "createdAt")
+              VALUES (
+                ${crypto.randomUUID()},
+                ${savedChunk.id},
+                ${env.openaiEmbeddingModel},
+                ${vectorLiteral}::vector,
+                NOW()
+              )
+            `;
+          }
         }
-      }
+      });
     }
 
+    console.log(
+      `Indexing ${repositoryId}: ${changedFiles} changed/new, ${unchangedFiles} unchanged`
+    );
+
     await this.updateJob(indexJobId, 85, "Saving architecture graph");
+
+    await prisma.architectureGraph.deleteMany({
+      where: {
+        repositoryId,
+        name: "Current architecture"
+      }
+    });
+
     await prisma.architectureGraph.create({
       data: {
         repositoryId,
