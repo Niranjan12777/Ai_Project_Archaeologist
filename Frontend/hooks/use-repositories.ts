@@ -7,7 +7,19 @@ export function useRepositories() {
   return useQuery({
     queryKey: ["repositories"],
     queryFn: repositoryService.list,
-    refetchInterval: 5000
+    refetchInterval: (query) => {
+      const repositories = query.state.data;
+
+      const isIndexing = repositories?.some((repository) =>
+        repository.indexJobs?.some(
+          (job) =>
+            job.status === "QUEUED" ||
+            job.status === "RUNNING"
+        )
+      );
+
+      return isIndexing ? 5000 : false;
+    }
   });
 }
 
