@@ -13,7 +13,7 @@ const documentationTitles: Record<DocumentationType, string> = {
 export class DocumentationService {
   private readonly openai = env.openaiApiKey ? new OpenAI({ apiKey: env.openaiApiKey }) : null;
 
-  constructor(private readonly code: CodeIntelligenceRepository) {}
+  constructor(private readonly code: CodeIntelligenceRepository) { }
 
   list(repositoryId: string) {
     return this.code.listDocumentation(repositoryId);
@@ -41,7 +41,6 @@ export class DocumentationService {
   private async generateWithAi(type: DocumentationType, context: Awaited<ReturnType<CodeIntelligenceRepository["repositoryContext"]>>) {
     const response = await this.openai?.chat.completions.create({
       model: env.openaiChatModel,
-      temperature: 0.2,
       messages: [
         {
           role: "system",

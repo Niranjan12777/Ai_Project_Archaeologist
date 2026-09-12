@@ -19,6 +19,28 @@ export class RepositoryIndexProcessor {
 
   async process(job: Job<RepositoryIndexJobData>): Promise<void> {
     const { repositoryId, indexJobId } = job.data;
+
+    try {
+      await this.runIndexing(repositoryId, indexJobId);
+    } catch (error) {
+      console.error(`Repository indexing failed for ${repositoryId}:`, error);
+
+      await prisma.repositoryIndexJob.update({
+        where: { id: indexJobId },
+        data: {
+          status: "FAILED",
+          currentStep: "Indexing failed"
+        }
+      });
+
+      throw error;
+    }
+  }
+
+  private async runIndexing(
+    repositoryId: string,
+    indexJobId: string
+  ): Promise<void> {
     await this.updateJob(indexJobId, 5, "Loading repository metadata");
 
     const repository = await prisma.repository.findUniqueOrThrow({ where: { id: repositoryId } });
@@ -26,76 +48,170 @@ export class RepositoryIndexProcessor {
     await this.updateJob(indexJobId, 15, "Cloning or pulling repository");
     const localPath = await this.cloner.cloneOrPull(repository.id, repository.cloneUrl);
 
-    await this.updateJob(indexJobId, 30, "Parsing source files");
-    const files = await this.parser.parse(localPath);
+    try {
+      await this.updateJob(indexJobId, 30, "Parsing source files");
 
-    await this.updateJob(indexJobId, 38, "Synchronizing git metadata");
-    await this.persistGitMetadata(repositoryId, localPath);
+      const files = await this.parser.parse(localPath);
 
-    await this.updateJob(indexJobId, 45, "Running static analysis");
-    const graph = this.analyzer.analyze(files);
+      await this.updateJob(indexJobId, 38, "Synchronizing git metadata");
 
-    await this.updateJob(indexJobId, 60, "Persisting files and chunks");
-    await this.pruneRemovedFiles(repositoryId, files.map((file) => file.path));
+      await this.persistGitMetadata(repositoryId, localPath);
 
-    for (const sourceFile of files) {
-      const file = await prisma.repositoryFile.upsert({
-        where: { repositoryId_path: { repositoryId, path: sourceFile.path } },
-        update: {
-          extension: sourceFile.extension,
-          language: sourceFile.language,
-          sizeBytes: sourceFile.sizeBytes,
-          hash: this.hash(sourceFile.content)
-        },
-        create: {
-          repositoryId,
-          path: sourceFile.path,
-          extension: sourceFile.extension,
-          language: sourceFile.language,
-          sizeBytes: sourceFile.sizeBytes,
-          hash: this.hash(sourceFile.content)
+      await this.updateJob(indexJobId, 45, "Running static analysis");
+
+      const graph = this.analyzer.analyze(files);
+
+      await this.updateJob(indexJobId, 60, "Persisting files and chunks");
+      await this.pruneRemovedFiles(repositoryId, files.map((file) => file.path));
+
+      const existingFiles = await prisma.repositoryFile.findMany({
+        where: { repositoryId },
+        select: {
+          id: true,
+          path: true,
+          hash: true
         }
       });
 
-      await prisma.fileChunk.deleteMany({ where: { fileId: file.id } });
-      for (const chunk of this.chunker.chunk(sourceFile.content)) {
-        const savedChunk = await prisma.fileChunk.create({
-          data: { fileId: file.id, ...chunk }
-        });
-        const vector = await this.embeddings.embed(chunk.content);
-        if (vector) {
-          const vectorLiteral = `[${vector.join(",")}]`;
-          await prisma.$executeRaw`
-            INSERT INTO "Embedding" ("id", "chunkId", "model", "vector", "createdAt")
-            VALUES (${crypto.randomUUID()}, ${savedChunk.id}, ${env.openaiEmbeddingModel}, ${vectorLiteral}::vector, NOW())
-          `;
+      const existingFilesByPath = new Map(
+        existingFiles.map((file) => [file.path, file])
+      );
+
+      let changedFiles = 0;
+      let unchangedFiles = 0;
+
+      for (const sourceFile of files) {
+        const contentHash = this.hash(sourceFile.content);
+
+        const existingFile = existingFilesByPath.get(sourceFile.path);
+
+        if (existingFile?.hash === contentHash) {
+          unchangedFiles++;
+          continue;
         }
+
+        changedFiles++;
+
+        const file = await prisma.repositoryFile.upsert({
+          where: { repositoryId_path: { repositoryId, path: sourceFile.path } },
+          update: {
+            extension: sourceFile.extension,
+            language: sourceFile.language,
+            sizeBytes: sourceFile.sizeBytes,
+            hash: contentHash
+          },
+          create: {
+            repositoryId,
+            path: sourceFile.path,
+            extension: sourceFile.extension,
+            language: sourceFile.language,
+            sizeBytes: sourceFile.sizeBytes,
+            hash: contentHash
+          }
+        });
+
+        const chunks = this.chunker.chunk(sourceFile.content);
+
+        const vectors = await this.embeddings.embedMany(
+          chunks.map((chunk) => chunk.content)
+        );
+
+        await prisma.$transaction(async (tx) => {
+          await tx.fileChunk.deleteMany({
+            where: { fileId: file.id }
+          });
+
+          for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const vector = vectors[i];
+
+            if (!chunk) {
+              continue;
+            }
+
+            const savedChunk = await tx.fileChunk.create({
+              data: {
+                fileId: file.id,
+                ...chunk
+              }
+            });
+
+            if (vector) {
+              const vectorLiteral = `[${vector.join(",")}]`;
+
+              await tx.$executeRaw`
+                INSERT INTO "Embedding"
+                  ("id", "chunkId", "model", "vector", "createdAt")
+                VALUES (
+                  ${crypto.randomUUID()},
+                  ${savedChunk.id},
+                  ${env.openaiEmbeddingModel},
+                  ${vectorLiteral}::vector,
+                  NOW()
+                )
+              `;
+            }
+          }
+        });
+      }
+
+      console.log(
+        `Indexing ${repositoryId}: ` + `${changedFiles} changed/new, ` + `${unchangedFiles} unchanged`
+      );
+
+      await this.updateJob(indexJobId, 85, "Saving architecture graph");
+
+      await prisma.architectureGraph.deleteMany({
+        where: {
+          repositoryId,
+          name: "Current architecture"
+        }
+      });
+
+      await prisma.architectureGraph.create({
+        data: {
+          repositoryId,
+          name: "Current architecture",
+          nodes: graph.nodes,
+          edges: graph.edges,
+          metadata: {
+            generatedBy: "static-analyzer"
+          }
+        }
+      });
+
+      await prisma.repositoryIndexJob.update({
+        where: {
+          id: indexJobId
+        },
+        data: {
+          status: "COMPLETED",
+          progress: 100,
+          currentStep: "Indexing complete",
+          completedAt: new Date()
+        }
+      });
+    } finally {
+      try {
+        await this.cloner.cleanup(repository.id);
+
+        console.log(
+          `Cleaned up repository workspace: ${repository.id}`
+        );
+      } catch (cleanupError) {
+        console.error(
+          `Failed to cleanup repository workspace for ${repository.id}:`,
+          cleanupError
+        );
       }
     }
-
-    await this.updateJob(indexJobId, 85, "Saving architecture graph");
-    await prisma.architectureGraph.create({
-      data: {
-        repositoryId,
-        name: "Current architecture",
-        nodes: graph.nodes,
-        edges: graph.edges,
-        metadata: { generatedBy: "static-analyzer" }
-      }
-    });
-
-    await prisma.repositoryIndexJob.update({
-      where: { id: indexJobId },
-      data: {
-        status: "COMPLETED",
-        progress: 100,
-        currentStep: "Indexing complete",
-        completedAt: new Date()
-      }
-    });
   }
 
-  private updateJob(id: string, progress: number, currentStep: string) {
+  private updateJob(
+    id: string,
+    progress: number,
+    currentStep: string
+  ) {
     return prisma.repositoryIndexJob.update({
       where: { id },
       data: {

@@ -15,16 +15,16 @@ export class AiChatService {
   constructor(
     private readonly code: CodeIntelligenceRepository,
     private readonly rag: RagService
-  ) {}
+  ) { }
 
   async ask(input: { userId: string; repositoryId: string; question: string; chatId?: string }): Promise<ChatAnswer> {
     const chat = input.chatId
       ? await this.code.findChatForUser({ chatId: input.chatId, userId: input.userId, repositoryId: input.repositoryId })
       : await this.code.createChat({
-          userId: input.userId,
-          repositoryId: input.repositoryId,
-          title: this.titleFromQuestion(input.question)
-        });
+        userId: input.userId,
+        repositoryId: input.repositoryId,
+        title: this.titleFromQuestion(input.question)
+      });
 
     const activeChat = chat ?? await this.code.createChat({
       userId: input.userId,
@@ -57,7 +57,6 @@ export class AiChatService {
   private async generateAnswer(question: string, contexts: ChunkSearchResult[]): Promise<string> {
     const response = await this.openai?.chat.completions.create({
       model: env.openaiChatModel,
-      temperature: 0.2,
       messages: [
         {
           role: "system",
