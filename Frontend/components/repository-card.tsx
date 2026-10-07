@@ -32,7 +32,7 @@ export function RepositoryCard({ repository }: { repository: RepositorySummary }
   const isIndexing = job?.status === "QUEUED" || job?.status === "RUNNING";
 
   return (
-    <article className={`${styles.card} rounded-lg border border-line bg-white p-5`}>
+    <article className={`${styles.card} rounded-lg border border-line bg-panel p-5`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href={`/repositories/${repository.id}` as Route} className="text-base font-semibold text-ink">

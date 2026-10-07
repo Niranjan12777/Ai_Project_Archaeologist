@@ -33,7 +33,7 @@ export default function SearchPage() {
         }}
       >
         <select
-          className={`${styles.input} rounded-md border border-line px-4 py-3 text-sm outline-none`}
+          className={`${styles.input} rounded-md border bg-surface border-line px-4 py-3 text-sm outline-none`}
           value={activeRepositoryId}
           onChange={(event) => setRepositoryId(event.target.value)}
         >
@@ -57,7 +57,7 @@ export default function SearchPage() {
           <Search size={20} />
         </button>
       </form>
-      <section className="mt-6 rounded-lg border border-line bg-white p-5">
+      <section className="mt-6 rounded-lg border border-line bg-surface p-5">
         <h2 className="text-sm font-semibold text-ink">{activeRepositoryName}</h2>
         <div className="mt-4 space-y-4">
           {search.isPending ? <p className="text-sm text-muted">Searching indexed chunks...</p> : null}

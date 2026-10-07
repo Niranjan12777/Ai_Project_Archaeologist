@@ -36,7 +36,7 @@ export default function DocumentationPage() {
     <AppShell>
       <PageHeader title="Documentation" description="Generate README files, API references, architecture notes, commit summaries, and onboarding guides." />
       <select
-        className={`${styles.input} mt-8 w-full rounded-md border border-line px-4 py-3 text-sm outline-none md:w-96`}
+        className={`${styles.input} mt-8 w-full rounded-md border bg-surface border-line px-4 py-3 text-sm outline-none md:w-96`}
         value={activeRepositoryId}
         onChange={(event) => setRepositoryId(event.target.value)}
       >
@@ -48,11 +48,11 @@ export default function DocumentationPage() {
       </select>
       <section className="mt-8 grid gap-4 md:grid-cols-2">
         {docTypes.map((item) => (
-          <article key={item.type} className="rounded-lg border border-line bg-white p-5">
+          <article key={item.type} className="rounded-lg border border-line bg-surface p-5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-semibold text-ink">{item.label}</h2>
               <button
-                className={`${styles.button} rounded-md border border-line px-3 py-2 text-sm font-medium disabled:text-muted`}
+                className={`${styles.button} rounded-md border border-line bg-accent px-3 py-2 text-sm font-medium disabled:text-muted`}
                 disabled={!activeRepositoryId || generate.isPending}
                 onClick={() => generate.mutate(item.type)}
                 type="button"
@@ -68,10 +68,10 @@ export default function DocumentationPage() {
         {docs.isLoading ? <p className="text-sm text-muted">Loading generated documentation...</p> : null}
         {docs.isError ? <p className="text-sm text-red-600">Unable to load documentation for this repository.</p> : null}
         {docs.data?.map((doc) => (
-          <article key={doc.id} className="rounded-lg border border-line bg-white p-5">
+          <article key={doc.id} className="rounded-lg border border-line bg-surface p-5">
             <div className="text-xs font-medium text-muted">{doc.type}</div>
             <h2 className="mt-1 font-semibold text-ink">{doc.title}</h2>
-            <pre className="mt-4 max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-panel p-4 text-sm leading-6 text-neutral-700">{doc.content}</pre>
+            <pre className="mt-4 max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-panel p-4 text-sm leading-6 text-muted">{doc.content}</pre>
           </article>
         ))}
         {docs.data?.length === 0 ? <p className="text-sm text-muted">No generated documentation yet.</p> : null}

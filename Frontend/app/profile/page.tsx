@@ -10,7 +10,7 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <PageHeader title="Profile" description="Review account information, role, linked GitHub identity, and audit activity." />
-      <section className="mt-8 rounded-lg border border-line bg-white p-5">
+      <section className="mt-8 rounded-lg border border-line bg-surface p-5">
         <h2 className="text-base font-semibold text-ink">Account</h2>
         <dl className="mt-4 grid gap-4 md:grid-cols-3">
           <div className="rounded-md bg-panel p-4">
