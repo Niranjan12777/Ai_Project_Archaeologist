@@ -1,18 +1,51 @@
+import { redisConnection } from "../config/redis.js";
 import type { PrismaClient, Repository } from "../generated/prisma/client.js";
 
-export class RepositoryRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+const REPOSITORY_LIST_TTL = 5;
+const REPOSITORY_DETAIL_TTL = 30;
 
-  listForUser(ownerId: string): Promise<Repository[]> {
-    return this.prisma.repository.findMany({
+export class RepositoryRepository {
+  constructor(private readonly prisma: PrismaClient) { }
+
+  async listForUser(ownerId: string): Promise<Repository[]> {
+    const version = await this.getCacheVersion(ownerId);
+
+    const cacheKey = `repositories:user:${ownerId}:v${version}:list`;
+
+    const cached = await redisConnection.get(cacheKey);
+
+    if (cached) {
+      return JSON.parse(cached) as Repository[];
+    }
+
+    const repositories = this.prisma.repository.findMany({
       where: { ownerId },
       orderBy: { updatedAt: "desc" },
       include: { indexJobs: { orderBy: { createdAt: "desc" }, take: 1 } }
     });
+
+    await redisConnection.set(
+      cacheKey,
+      JSON.stringify(repositories),
+      "EX",
+      REPOSITORY_LIST_TTL
+    )
+
+    return repositories;
   }
 
-  findForUser(id: string, ownerId: string): Promise<Repository | null> {
-    return this.prisma.repository.findFirst({
+  async findForUser(id: string, ownerId: string): Promise<Repository | null> {
+    const version = await this.getCacheVersion(ownerId);
+
+    const cacheKey = `repositories:user:${ownerId}:${id}:v${version}:user`;
+
+    const cached = await redisConnection.get(cacheKey);
+
+    if (cached) {
+      return JSON.parse(cached) as Repository;
+    }
+
+    const repository = this.prisma.repository.findFirst({
       where: { id, ownerId },
       include: {
         files: { take: 50, orderBy: { path: "asc" } },
@@ -23,9 +56,22 @@ export class RepositoryRepository {
         documentation: { orderBy: { updatedAt: "desc" } }
       }
     });
+
+    if (!repository) {
+      return null;
+    }
+
+    await redisConnection.set(
+      cacheKey,
+      JSON.stringify(repository),
+      "EX",
+      REPOSITORY_DETAIL_TTL
+    )
+
+    return repository;
   }
 
-  upsertForUser(input: {
+  async upsertForUser(input: {
     ownerId: string;
     providerRepoId: string;
     ownerName: string;
@@ -40,7 +86,7 @@ export class RepositoryRepository {
     stars?: number;
     forks?: number;
   }): Promise<Repository> {
-    return this.prisma.repository.upsert({
+    const repository = await this.prisma.repository.upsert({
       where: {
         ownerId_provider_providerRepoId: {
           ownerId: input.ownerId,
@@ -79,14 +125,58 @@ export class RepositoryRepository {
         lastSyncedAt: new Date()
       }
     });
+
+    await this.invalidateCache(
+      input.ownerId
+    );
+
+    return repository;
   }
 
-  deleteForUser(id: string, ownerId: string): Promise<Repository> {
-    return this.prisma.repository.delete({
+  async deleteForUser(id: string, ownerId: string): Promise<Repository> {
+    const repository = await this.prisma.repository.delete({
       where: {
         id,
         ownerId
       }
     });
+
+    await this.invalidateCache(
+      ownerId
+    )
+
+    return repository;
+  }
+
+  private async invalidateCache(ownerId: string): Promise<void> {
+    await redisConnection.incr(this.getVersionKey(ownerId));
+  }
+
+  private async getCacheVersion(ownerId: string): Promise<number> {
+    const version = await redisConnection.get(this.getVersionKey(ownerId));
+
+    if (version) {
+      return Number(version);
+    }
+
+    const newVersion = await redisConnection.set(
+      this.getVersionKey(ownerId),
+      "1",
+      "EX",
+      60 * 60 * 24 * 30,
+      "NX"
+    );
+
+    if (newVersion === "OK") {
+      return 1;
+    }
+
+    const currentVersion = await redisConnection.get(this.getVersionKey(ownerId));
+
+    return Number(currentVersion ?? 1);
+  }
+
+  private getVersionKey(ownerId: string): string {
+    return `code-intel:${ownerId}:version`;
   }
 }

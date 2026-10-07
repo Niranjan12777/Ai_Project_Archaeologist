@@ -10,6 +10,12 @@ const documentationTitles: Record<DocumentationType, string> = {
   ONBOARDING: "Generated Onboarding Guide"
 };
 
+type RepositoryContext = Awaited<
+  ReturnType<CodeIntelligenceRepository["repositoryContext"]>
+>;
+
+type RepositoryFile = RepositoryContext["files"][number];
+
 export class DocumentationService {
   private readonly openai = env.openaiApiKey ? new OpenAI({ apiKey: env.openaiApiKey }) : null;
 
@@ -38,7 +44,7 @@ export class DocumentationService {
     });
   }
 
-  private async generateWithAi(type: DocumentationType, context: Awaited<ReturnType<CodeIntelligenceRepository["repositoryContext"]>>) {
+  private async generateWithAi(type: DocumentationType, context: RepositoryContext) {
     const response = await this.openai?.chat.completions.create({
       model: env.openaiChatModel,
       messages: [
@@ -48,7 +54,21 @@ export class DocumentationService {
         },
         {
           role: "user",
-          content: `Documentation type: ${type}\nRepository: ${context.repository?.fullName}\nFiles:\n${context.files.map((file) => `- ${file.path} (${file.language ?? "Unknown"})`).join("\n")}\nArchitecture graph nodes: ${Array.isArray(context.graph?.nodes) ? context.graph.nodes.length : 0}`
+          content: [
+            `Documentation type: ${type}`,
+            `Repository: ${context.repository?.fullName ?? "Unknown"}`,
+            "Files:",
+            context.files
+              .map(
+                (file: RepositoryFile) =>
+                  `- ${file.path} (${file.language ?? "Unknown"})`
+              )
+              .join("\n"),
+            `Architecture graph nodes: ${Array.isArray(context.graph?.nodes)
+              ? context.graph.nodes.length
+              : 0
+            }`
+          ].join("\n")
         }
       ]
     });
@@ -56,7 +76,7 @@ export class DocumentationService {
     return response?.choices[0]?.message.content ?? this.generateFallback(type, context);
   }
 
-  private generateFallback(type: DocumentationType, context: Awaited<ReturnType<CodeIntelligenceRepository["repositoryContext"]>>) {
+  private generateFallback(type: DocumentationType, context: RepositoryContext) {
     const repositoryName = context.repository?.fullName ?? "Repository";
     const filesByLanguage = new Map<string, number>();
     for (const file of context.files) {
@@ -66,7 +86,7 @@ export class DocumentationService {
     const languageSummary = [...filesByLanguage.entries()]
       .map(([language, count]) => `- ${language}: ${count}`)
       .join("\n");
-    const sampleFiles = context.files.slice(0, 20).map((file) => `- \`${file.path}\``).join("\n");
+    const sampleFiles = context.files.slice(0, 20).map((file: RepositoryFile) => `- \`${file.path}\``).join("\n");
 
     return `# ${documentationTitles[type]}\n\n## Repository\n\n${repositoryName}\n\n## Indexed Languages\n\n${languageSummary || "- No indexed files yet"}\n\n## Important Files\n\n${sampleFiles || "- Re-index the repository to populate file metadata."}\n\n## Notes\n\nThis document was generated from indexed repository metadata. Add an OpenAI API key for richer prose and deeper architectural explanations.`;
   }

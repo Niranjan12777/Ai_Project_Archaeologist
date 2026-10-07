@@ -9,6 +9,7 @@ import { SourceParser } from "../parser/source-parser.js";
 import { Chunker } from "../parser/chunker.js";
 import { StaticAnalyzer } from "../architecture/static-analyzer.js";
 import { EmbeddingService } from "../embeddings/embedding.service.js";
+import { redisConnection } from "../config/redis.js";
 
 export class RepositoryIndexProcessor {
   private readonly cloner = new RepositoryCloner();
@@ -34,6 +35,10 @@ export class RepositoryIndexProcessor {
       });
 
       throw error;
+    } finally {
+      await redisConnection.incr(
+        `code-intel:${repositoryId}:version`
+      );
     }
   }
 
