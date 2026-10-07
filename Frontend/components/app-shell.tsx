@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import styles from "@/styles/interactive.module.css";
+import { Navbar } from "./navbar";
 
 const navItems = [
   {
@@ -79,7 +80,7 @@ export function AppShell({
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-white text-ink">
+    <div className="min-h-screen bg-surface text-ink">
       <aside
         className={`
           fixed inset-y-0 left-0
@@ -246,10 +247,13 @@ export function AppShell({
         </button>
       </aside>
 
+      <Navbar sidebarOpen={sidebarOpen} />
+
       <main
         className={`
           min-h-screen
           pl-[72px]
+          pt-16
 
           ${sidebarOpen
             ? "min-[951px]:pl-72"
