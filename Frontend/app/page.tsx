@@ -4,7 +4,7 @@ import styles from "@/styles/interactive.module.css";
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-surface">
       <section className="mx-auto grid min-h-screen max-w-7xl items-center gap-10 px-5 py-10 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
           <p className="text-sm font-semibold uppercase tracking-normal text-accent">Repository intelligence platform</p>
@@ -39,7 +39,7 @@ export default function LandingPage() {
             ].map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="rounded-lg border border-line bg-white p-4">
+                <div key={item.title} className="rounded-lg border border-line bg-panel p-4">
                   <Icon className="text-accent" size={22} />
                   <h2 className="mt-3 text-sm font-semibold text-ink">{item.title}</h2>
                   <p className="mt-1 text-sm leading-6 text-muted">{item.text}</p>

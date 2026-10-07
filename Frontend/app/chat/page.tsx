@@ -93,7 +93,7 @@ export default function ChatPage() {
         description="Ask grounded questions about indexed repositories with citations back to files and commits."
       />
 
-      <section className="mt-8 flex h-[650px] flex-col overflow-hidden rounded-lg border border-line bg-white">
+      <section className="mt-8 flex h-[650px] flex-col overflow-hidden rounded-lg border border-line bg-surface">
 
         <div className="shrink-0 border-b border-line p-4">
           <select
@@ -168,7 +168,7 @@ export default function ChatPage() {
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-line bg-white p-4">
+        <div className="shrink-0 border-t border-line bg-surface p-4">
           <form
             className="mx-auto flex w-full max-w-4xl gap-2"
             onSubmit={handleSubmit}

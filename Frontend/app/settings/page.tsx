@@ -5,7 +5,7 @@ export default function SettingsPage() {
   return (
     <AppShell>
       <PageHeader title="Settings" description="Manage GitHub connection, AI model defaults, theme, indexing preferences, and account controls." />
-      <section className="mt-8 rounded-lg border border-line bg-white p-5">
+      <section className="mt-8 rounded-lg border border-line bg-surface p-5">
         <h2 className="text-base font-semibold">Workspace preferences</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <label className="text-sm text-muted">

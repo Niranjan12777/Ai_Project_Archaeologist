@@ -35,7 +35,7 @@ export default function ArchitecturePage() {
         ))}
       </select>
       <section className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="rounded-lg border border-line bg-white p-5">
+        <div className="rounded-lg border border-line bg-surface p-5">
           <h2 className="text-sm font-semibold text-ink">Graph summary</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-md bg-panel p-4">
@@ -50,13 +50,13 @@ export default function ArchitecturePage() {
           {graph.isLoading ? <p className="mt-4 text-sm text-muted">Loading graph...</p> : null}
           {graph.isError ? <p className="mt-4 text-sm text-red-600">No architecture graph found. Index the repository first.</p> : null}
         </div>
-        <div className="rounded-lg border border-line bg-white p-5">
+        <div className="rounded-lg border border-line bg-surface p-5">
           <h2 className="text-sm font-semibold text-ink">Detected components</h2>
           <div className="mt-4 max-h-[520px] space-y-2 overflow-auto">
             {nodes.slice(0, 80).map((node) => (
               <div key={node.id} className="flex items-center justify-between gap-3 rounded-md bg-panel px-3 py-2 text-sm">
                 <span className="min-w-0 truncate text-ink">{node.id}</span>
-                <span className="shrink-0 rounded border border-line bg-white px-2 py-1 text-xs text-muted">{node.type}</span>
+                <span className="shrink-0 rounded border border-line bg-surface px-2 py-1 text-xs text-muted">{node.type}</span>
               </div>
             ))}
             {!nodes.length && !graph.isError ? <p className="text-sm text-muted">Load or index a repository to view architecture nodes.</p> : null}

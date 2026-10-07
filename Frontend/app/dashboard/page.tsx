@@ -25,14 +25,14 @@ export default function DashboardPage() {
           ["Active jobs", String(activeJobs)],
           ["Failed jobs", String(failedJobs)]
         ].map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-line bg-white p-5">
+          <div key={label} className="rounded-lg border border-line bg-panel p-5">
             <div className="text-sm text-muted">{label}</div>
             <div className="mt-2 text-3xl font-semibold text-ink">{value}</div>
           </div>
         ))}
       </section>
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-line bg-white p-5">
+        <div className="rounded-lg border border-line bg-panel p-5">
           <h2 className="text-base font-semibold">Index activity</h2>
           <div className="mt-6 space-y-3">
             {repositories.slice(0, 6).map((repository) => {
@@ -52,7 +52,7 @@ export default function DashboardPage() {
             {!repositories.length ? <p className="text-sm text-muted">Import repositories to populate activity.</p> : null}
           </div>
         </div>
-        <div className="rounded-lg border border-line bg-white p-5">
+        <div className="rounded-lg border border-line bg-panel p-5">
           <h2 className="text-base font-semibold">Language distribution</h2>
           <div className="mt-6 space-y-3">
             {topLanguages.map(([language, count]) => (
@@ -74,13 +74,13 @@ export default function DashboardPage() {
         <h2 className="text-base font-semibold">Recent repositories</h2>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {isLoading ? (
-            <div className="rounded-lg border border-line bg-white p-5 text-sm text-muted">Loading repositories...</div>
+            <div className="rounded-lg border border-line bg-panel p-5 text-sm text-muted">Loading repositories...</div>
           ) : repositories.length ? (
             repositories.slice(0, 4).map((repository) => (
               <RepositoryCard key={repository.id} repository={repository} />
             ))
           ) : (
-            <div className="rounded-lg border border-line bg-white p-5 text-sm text-muted">
+            <div className="rounded-lg border border-line bg-panel p-5 text-sm text-muted">
               Import a GitHub repository to start indexing.
             </div>
           )}

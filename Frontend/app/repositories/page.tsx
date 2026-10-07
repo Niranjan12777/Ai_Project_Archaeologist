@@ -18,15 +18,15 @@ export default function RepositoriesPage() {
       />
       <section className="mt-8 grid gap-4 lg:grid-cols-2">
         {isLoading ? (
-          <div className="rounded-lg border border-line bg-white p-5 text-sm text-muted">Loading repositories...</div>
+          <div className="rounded-lg border border-line bg-surface p-5 text-sm text-muted">Loading repositories...</div>
         ) : null}
         {isError ? (
-          <div className="rounded-lg border border-line bg-white p-5 text-sm text-red-600">
+          <div className="rounded-lg border border-line bg-surface p-5 text-sm text-red-600">
             Unable to load repositories. Confirm the API is running and your session is valid.
           </div>
         ) : null}
         {!isLoading && !isError && repositories.length === 0 ? (
-          <div className="rounded-lg border border-line bg-white p-5 text-sm text-muted">
+          <div className="rounded-lg border border-line bg-surface p-5 text-sm text-muted">
             No repositories imported yet.
           </div>
         ) : null}

@@ -26,7 +26,7 @@ export default function CommitHistoryPage() {
           </option>
         ))}
       </select>
-      <section className="mt-8 rounded-lg border border-line bg-white p-5">
+      <section className="mt-8 rounded-lg border border-line bg-surface p-5">
         <h2 className="text-base font-semibold text-ink">{repository?.fullName ?? "Repository commits"}</h2>
         {isLoading ? <p className="mt-4 text-sm text-muted">Loading commits...</p> : null}
         <div className="mt-5 space-y-3">
