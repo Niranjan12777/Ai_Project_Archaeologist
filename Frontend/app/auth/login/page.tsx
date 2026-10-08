@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { LogIn } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import styles from "@/styles/interactive.module.css";
+import { FormField } from "@/components/formField";
 
 interface LoginForm {
   email: string;
@@ -15,7 +16,7 @@ interface LoginForm {
 export default function LoginPage() {
   const router = useRouter();
   const auth = useAuth();
-  const { register, handleSubmit } = useForm<LoginForm>();
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>();
 
   return (
     <main className="grid min-h-screen place-items-center bg-surface px-5">
@@ -28,10 +29,78 @@ export default function LoginPage() {
       >
         <h1 className="text-2xl font-semibold text-ink">Sign in</h1>
         <div className="mt-6 space-y-4">
-          <input className={`${styles.input} w-full rounded-md border text-muted border-line px-3 py-2 outline-none`} placeholder="Email" {...register("email")} />
-          <input className={`${styles.input} w-full rounded-md border text-muted border-line px-3 py-2 outline-none`} placeholder="Password" type="password" {...register("password")} />
+
+          <FormField error={errors.email?.message}>
+            <input
+              className={`
+              ${styles.input} 
+              w-full 
+              rounded-md 
+              border 
+              text-muted 
+              border-line 
+              px-3 
+              py-2 
+              outline-none
+              `}
+              placeholder="Email"
+              {...register("email", {
+                required: "Enter your email",
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: "Enter a valid email address"
+                }
+              })}
+            />
+          </FormField>
+
+          <FormField error={errors.password?.message}>
+            <input
+              className={`
+                ${styles.input} 
+                w-full 
+                rounded-md 
+                border 
+                text-muted 
+                border-line 
+                px-3 
+                py-2 
+                outline-none
+              `}
+              placeholder="Password"
+              type="password"
+              {...register("password", {
+                required: "Enter your password",
+                minLength: {
+                  value: 10,
+                  message: "Password must be at least 10 characters"
+                },
+                maxLength: {
+                  value: 128,
+                  message: "Password must be less than 128 characters"
+                }
+              })}
+            />
+          </FormField>
+
         </div>
-        <button className={`${styles.button} mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 font-medium text-white`}>
+        <button
+          className={`
+            ${styles.button} 
+            mt-6 
+            inline-flex 
+            w-full 
+            items-center 
+            justify-center 
+            gap-2 
+            rounded-md 
+            bg-accent 
+            px-4 
+            py-2 
+            font-medium 
+            text-white
+          `}
+        >
           <LogIn size={17} />
           Sign in
         </button>

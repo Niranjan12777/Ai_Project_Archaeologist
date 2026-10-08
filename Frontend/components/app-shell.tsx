@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Bot,
   Clock3,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 
 import styles from "@/styles/interactive.module.css";
+import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { Navbar } from "./navbar";
 
 const navItems = [
@@ -67,22 +67,13 @@ export function AppShell({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    const token = window.localStorage.getItem("accessToken");
-
-    if (!token) {
-      router.replace("/auth/login");
-    }
-  }, [router]);
-
   return (
-    <div className="min-h-screen bg-surface text-ink">
-      <aside
-        className={`
+    <ProtectedRoute>
+      <div className="min-h-screen bg-surface text-ink">
+        <aside
+          className={`
           fixed inset-y-0 left-0
           z-50
           border-r border-line
@@ -95,23 +86,23 @@ export function AppShell({
 
           ${sidebarOpen ? "w-72" : "w-[72px]"}
         `}
-      >
+        >
 
-        <div className={`flex items-center ${sidebarOpen ? "justify-between" : "justify-center"}`}>
-          {sidebarOpen ? (
-            <Link href="/dashboard" className="min-w-0">
-              <div className="truncate text-lg font-semibold">
-                AI Project Archaeologist
-              </div>
+          <div className={`flex items-center ${sidebarOpen ? "justify-between" : "justify-center"}`}>
+            {sidebarOpen ? (
+              <Link href="/dashboard" className="min-w-0">
+                <div className="truncate text-lg font-semibold">
+                  AI Project Archaeologist
+                </div>
 
-              <div className="mt-1 text-sm text-muted">
-                Repository intelligence
-              </div>
-            </Link>
-          ) : (
-            <Link
-              href="/dashboard"
-              className="
+                <div className="mt-1 text-sm text-muted">
+                  Repository intelligence
+                </div>
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard"
+                className="
                 flex
                 h-10
                 w-10
@@ -123,24 +114,24 @@ export function AppShell({
                 font-bold
                 text-white
               "
-              aria-label="AI Project Archaeologist"
-              title="AI Project Archaeologist"
-            >
-              A
-            </Link>
-          )}
-        </div>
+                aria-label="AI Project Archaeologist"
+                title="AI Project Archaeologist"
+              >
+                A
+              </Link>
+            )}
+          </div>
 
-        <nav className="mt-8 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
+          <nav className="mt-8 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={!sidebarOpen ? item.label : undefined}
-                className={`
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={!sidebarOpen ? item.label : undefined}
+                  className={`
                   ${styles.navLink}
 
                   group
@@ -155,25 +146,25 @@ export function AppShell({
                   transition-colors
 
                   ${sidebarOpen
-                    ? "gap-3 px-3"
-                    : "justify-center px-0"
-                  }
+                      ? "gap-3 px-3"
+                      : "justify-center px-0"
+                    }
                 `}
-              >
-                <Icon
-                  size={18}
-                  className="shrink-0"
-                />
+                >
+                  <Icon
+                    size={18}
+                    className="shrink-0"
+                  />
 
-                {sidebarOpen && (
-                  <span className="truncate">
-                    {item.label}
-                  </span>
-                )}
+                  {sidebarOpen && (
+                    <span className="truncate">
+                      {item.label}
+                    </span>
+                  )}
 
-                {!sidebarOpen && (
-                  <span
-                    className="
+                  {!sidebarOpen && (
+                    <span
+                      className="
                       pointer-events-none
                       absolute
                       left-full
@@ -191,19 +182,19 @@ export function AppShell({
                       transition-opacity
                       group-hover:opacity-100
                     "
-                  >
-                    {item.label}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                    >
+                      {item.label}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
-        <button
-          type="button"
-          onClick={() => { setSidebarOpen((current) => !current); }}
-          className="
+          <button
+            type="button"
+            onClick={() => { setSidebarOpen((current) => !current); }}
+            className="
             absolute
             -right-0
             top-4
@@ -232,47 +223,47 @@ export function AppShell({
             focus:ring-accent
             focus:ring-offset-1
           "
-          aria-label={
-            sidebarOpen
-              ? "Collapse sidebar"
-              : "Expand sidebar"
-          }
-          aria-expanded={sidebarOpen}
-        >
-          {sidebarOpen ? (
-            <X size={15} />
-          ) : (
-            <Menu size={15} />
-          )}
-        </button>
-      </aside>
+            aria-label={
+              sidebarOpen
+                ? "Collapse sidebar"
+                : "Expand sidebar"
+            }
+            aria-expanded={sidebarOpen}
+          >
+            {sidebarOpen ? (
+              <X size={15} />
+            ) : (
+              <Menu size={15} />
+            )}
+          </button>
+        </aside>
 
-      <Navbar sidebarOpen={sidebarOpen} />
+        <Navbar sidebarOpen={sidebarOpen} />
 
-      <main
-        className={`
+        <main
+          className={`
           min-h-screen
           pl-[72px]
           pt-16
 
           ${sidebarOpen
-            ? "min-[951px]:pl-72"
-            : "min-[951px]:pl-[72px]"
-          }
+              ? "min-[951px]:pl-72"
+              : "min-[951px]:pl-[72px]"
+            }
 
           transition-[padding-left]
           duration-200
           ease-in-out
         `}
-      >
-        <div className="mx-auto min-h-screen max-w-7xl px-5 py-6 sm:px-8">
-          {children}
-        </div>
-      </main>
+        >
+          <div className="mx-auto min-h-screen max-w-7xl px-5 py-6 sm:px-8">
+            {children}
+          </div>
+        </main>
 
-      {sidebarOpen && (
-        <button type="button" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)}
-          className="
+        {sidebarOpen && (
+          <button type="button" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)}
+            className="
             fixed
             inset-0
             z-40
@@ -281,8 +272,9 @@ export function AppShell({
 
             min-[951px]:hidden
           "
-        />
-      )}
-    </div>
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }
