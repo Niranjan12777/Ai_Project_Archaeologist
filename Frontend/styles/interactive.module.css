@@ -30,8 +30,8 @@
 }
 
 .navLink:hover {
-  color: #2563eb;
-  background-color: #f5f5f5;
+  color: var(--color-accent);
+  background-color: var(--color-panel);
 }
 
 .input {

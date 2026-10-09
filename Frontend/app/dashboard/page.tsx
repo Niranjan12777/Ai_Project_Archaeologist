@@ -32,7 +32,7 @@ export default function DashboardPage() {
         ))}
       </section>
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-lg border border-line bg-panel p-5">
+        <div className="rounded-lg min-w-50 border border-line bg-panel p-5">
           <h2 className="text-base font-semibold">Index activity</h2>
           <div className="mt-6 space-y-3">
             {repositories.slice(0, 6).map((repository) => {
